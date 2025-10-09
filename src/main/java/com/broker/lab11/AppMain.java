@@ -11,14 +11,12 @@ public class AppMain {
 
         try { Thread.sleep(200); } catch (InterruptedException ignored) {}
 
-        // subscriberii
         SocketSubscriberImpl subscriber1 = new SocketSubscriberImpl("localhost", 5001, "info");
         SocketSubscriberImpl subscriber2 = new SocketSubscriberImpl("localhost", 5001, "alert");
 
         new Thread(subscriber1::start).start();
         new Thread(subscriber2::start).start();
 
-        // publisher
         SocketPublisherImpl publisher = new SocketPublisherImpl("localhost", 5001);
         new Thread(publisher::start).start();
     }

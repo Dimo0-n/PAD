@@ -25,12 +25,10 @@ public class SocketSubscriberImpl implements SocketSubscriber {
             PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            // trimitem broker-ului că vrem să ne abonăm la topic
             writer.println("SUBSCRIBE:" + topic);
 
             System.out.println("[Subscriber] Ascult mesaje pe topic: " + topic);
 
-            // loop pentru primirea mesajelor
             String line;
             while ((line = reader.readLine()) != null) {
                 Message msg = new Message(topic, line);

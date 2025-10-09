@@ -51,12 +51,12 @@ public class SocketBrokerImpl implements SocketBroker {
 
             if (line.startsWith("SUBSCRIBE:")) {
                 String topic = line.substring("SUBSCRIBE:".length()).trim();
-                subscribe(topic, socket); // păstrăm socket-ul deschis!
+                subscribe(topic, socket);
             } else {
                 String topic = extractTopic(line);
                 messageQueue.put(new Message(topic, line));
                 System.out.println("[Broker] Mesaj adăugat în coadă: " + line);
-                socket.close(); // doar aici închidem socket-ul client dacă nu e subscriber
+                socket.close();
             }
 
         } catch (IOException | InterruptedException e) {
