@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package broker;
+
+option java_package = "com.broker.partea2";
+option java_outer_classname = "BrokerOuterClass";
+
+service BrokerService {
+  rpc SendMessage(Message) returns (Ack);
+  rpc Subscribe(SubscriptionRequest) returns (stream Message);
+}
+
+message Message {
+  string topic = 1;
+  string content = 2;
+}
+
+message Ack {
+  bool success = 1;
+}
+
+message SubscriptionRequest {
+  string topic = 1;
+}
