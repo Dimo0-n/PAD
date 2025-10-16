@@ -11,11 +11,14 @@ import java.util.concurrent.*;
 
 public class GRPCBrokerImpl extends BrokerServiceGrpc.BrokerServiceImplBase {
 
+    // Map pentru topic-uri și subscriberii lor
     private final Map<String, List<StreamObserver<Message>>> subscribers = new ConcurrentHashMap<>();
 
     @Override
     public void sendMessage(Message request, StreamObserver<Ack> responseObserver) {
         String topic = request.getTopic();
+        System.out.println("[Broker gRPC] Message received on topic '" + topic + "': " + request.getContent());
+
         List<StreamObserver<Message>> targets = subscribers.getOrDefault(topic, Collections.emptyList());
 
         synchronized (targets) {
@@ -35,11 +38,13 @@ public class GRPCBrokerImpl extends BrokerServiceGrpc.BrokerServiceImplBase {
         responseObserver.onCompleted();
     }
 
+
     @Override
     public void subscribe(SubscriptionRequest request, StreamObserver<Message> responseObserver) {
         String topic = request.getTopic();
         subscribers.computeIfAbsent(topic, t -> Collections.synchronizedList(new ArrayList<>()))
                 .add(responseObserver);
-        System.out.println("[Broker gRPC] Subscriber abonat pe topic: " + topic);
+
+        System.out.println("[Broker gRPC] Subscriber subscribed to topic: " + topic);
     }
 }
