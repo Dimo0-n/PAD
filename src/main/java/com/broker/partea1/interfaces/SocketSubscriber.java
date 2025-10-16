@@ -1,6 +1,6 @@
-package com.broker.lab11.interfaces;
+package com.broker.partea1.interfaces;
 
-import com.broker.lab11.models.Message;
+import com.broker.partea1.models.Message;
 
 public interface SocketSubscriber {
     void receiveMessage(Message message);

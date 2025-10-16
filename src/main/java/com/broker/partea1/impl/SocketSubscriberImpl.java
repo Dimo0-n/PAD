@@ -1,7 +1,7 @@
-package com.broker.lab11.impl;
+package com.broker.partea1.impl;
 
-import com.broker.lab11.interfaces.SocketSubscriber;
-import com.broker.lab11.models.Message;
+import com.broker.partea1.interfaces.SocketSubscriber;
+import com.broker.partea1.models.Message;
 
 import java.io.*;
 import java.net.Socket;
@@ -31,8 +31,7 @@ public class SocketSubscriberImpl implements SocketSubscriber {
 
             String line;
             while ((line = reader.readLine()) != null) {
-                Message msg = new Message(topic, line);
-                receiveMessage(msg);
+                receiveMessage(new Message(topic, line));
             }
 
         } catch (IOException e) {

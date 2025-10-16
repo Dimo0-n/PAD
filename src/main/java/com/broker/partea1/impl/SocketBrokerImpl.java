@@ -1,7 +1,7 @@
-package com.broker.lab11.impl;
+package com.broker.partea1.impl;
 
-import com.broker.lab11.interfaces.SocketBroker;
-import com.broker.lab11.models.Message;
+import com.broker.partea1.interfaces.SocketBroker;
+import com.broker.partea1.models.Message;
 
 import java.io.*;
 import java.net.*;
@@ -13,7 +13,7 @@ public class SocketBrokerImpl implements SocketBroker {
     private final int listenPort;
     private final Map<String, List<Socket>> subscribers = new ConcurrentHashMap<>();
     private final BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
-    private final ExecutorService connectionPool = Executors.newFixedThreadPool(50);
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     public SocketBrokerImpl(int listenPort) {
         this.listenPort = listenPort;
@@ -28,14 +28,14 @@ public class SocketBrokerImpl implements SocketBroker {
 
     @Override
     public void start() {
-        startWorkerThread();
+        startMessageDispatcher();
 
         try (ServerSocket serverSocket = new ServerSocket(listenPort)) {
             System.out.println("[Broker] Ascult pe portul " + listenPort);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                connectionPool.submit(() -> handleClient(clientSocket));
+                executor.submit(() -> handleClient(clientSocket));
             }
 
         } catch (IOException e) {
@@ -52,11 +52,17 @@ public class SocketBrokerImpl implements SocketBroker {
             if (line.startsWith("SUBSCRIBE:")) {
                 String topic = line.substring("SUBSCRIBE:".length()).trim();
                 subscribe(topic, socket);
+
+                // Păstrează socketul activ pentru a primi mesaje
+                while (!socket.isClosed()) {
+                    try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                }
+
             } else {
                 String topic = extractTopic(line);
                 messageQueue.put(new Message(topic, line));
-                System.out.println("[Broker] Mesaj adăugat în coadă: " + line);
-                socket.close();
+                System.out.println("[Broker] Mesaj primit și adăugat în coadă: " + line);
+                socket.close(); // publisher poate închide socketul
             }
 
         } catch (IOException | InterruptedException e) {
@@ -64,35 +70,40 @@ public class SocketBrokerImpl implements SocketBroker {
         }
     }
 
-    private void startWorkerThread() {
-        Thread worker = new Thread(() -> {
+    private void startMessageDispatcher() {
+        Thread dispatcher = new Thread(() -> {
             while (true) {
                 try {
                     Message msg = messageQueue.take();
                     List<Socket> targets = subscribers.getOrDefault(msg.getType(), Collections.emptyList());
 
-                    for (Socket s : targets) {
-                        try {
-                            PrintWriter writer = new PrintWriter(s.getOutputStream(), true);
-                            writer.println(msg.getBody());
-                        } catch (IOException e) {
-                            System.err.println("[Broker] Eroare la trimitere: " + e.getMessage());
+                    synchronized (targets) {
+                        Iterator<Socket> it = targets.iterator();
+                        while (it.hasNext()) {
+                            Socket s = it.next();
+                            try {
+                                PrintWriter writer = new PrintWriter(s.getOutputStream(), true);
+                                writer.println(msg.getBody());
+                            } catch (IOException e) {
+                                it.remove();
+                                try { s.close(); } catch (IOException ignored) {}
+                                System.err.println("[Broker] Subscriber inactiv eliminat");
+                            }
                         }
                     }
 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    System.err.println("[Broker] Worker thread întrerupt.");
+                    System.err.println("[Broker] Dispatcher thread întrerupt");
                 }
             }
         });
-        worker.setDaemon(true);
-        worker.start();
+        dispatcher.setDaemon(true);
+        dispatcher.start();
     }
 
-    private String extractTopic(String json) {
-        int start = json.indexOf("\"type\":\"") + 8;
-        int end = json.indexOf("\"", start);
-        return start >= 0 && end > start ? json.substring(start, end) : "info";
+    private String extractTopic(String line) {
+        String[] parts = line.split(":", 2);
+        return parts.length > 1 ? parts[0].trim() : "info";
     }
 }
